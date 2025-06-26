@@ -1,9 +1,9 @@
 <div align='center'>
   
 # A Quality-Guided Mixture of Score-fusion Experts Framework for Human Recognition
-<p align="center"> 
-  <img src="https://img.shields.io/badge/ICCV-2025-blue" /> 
-</p>
+
+[![ICCV 2025](https://img.shields.io/badge/ICCV-2025-blue)](https://iccv.thecvf.com/Conferences/2025)
+[![License: MIT](https://img.shields.io/badge/License-MIT-red)](https://github.com/jiezhu23/QME_ICCV25)
 </div>
 
 ## 🗞️ News  
