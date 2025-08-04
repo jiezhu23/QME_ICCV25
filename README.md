@@ -11,9 +11,9 @@
 - **2025-06-25**: 🎉 Our paper has been accepted to **ICCV 2025**!  
 
 ## 📋 TODO List
-- [ ] Prepare camera-ready and arXiv version.
 - [ ] Release preprocessed dataset.
 - [ ] Release code and model.
+- [x] Prepare camera-ready and arXiv version.
 
 ## 🚀 Getting Started  
 
