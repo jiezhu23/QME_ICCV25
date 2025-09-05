@@ -1,0 +1,26 @@
+# IDE settings
+.idea/
+.vscode/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Model checkpoints and data files
+*.h5
+*.hdf5
+*.pt
+*.pth
+*.ckpt
+*.checkpoint
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Other
+.DS_Store

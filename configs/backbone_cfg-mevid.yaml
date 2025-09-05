@@ -1,0 +1,45 @@
+# model list for fusion, the sequence must be the same during training and testing
+model_list:
+  - adaface
+  - cal-mevid
+  - agrl
+
+# Checkpoint path
+
+# pretrained models from Huggingface
+HF_TOKEN: 'YOUR_HF_TOKEN'
+
+# absolute path for pretrained models
+kprpe_cache_path: /YOUR_PATH/checkpoints/kprpe
+adaface_cache_path: /YOUR_PATH/checkpoints/adaface
+arcface_cache_path: /YOUR_PATH/checkpoints/arcface
+
+# BigGait
+# DINOv2-s
+biggait_backbone_path: ./checkpoints/BigGait/BigGait__Dinov2_Gaitbase_Frame30-40000.pt
+biggait_cfg_path: ./WBModules/msu_big_gait/configs/BigGait.yaml
+
+#CAL
+# for CCVID & LTCC(trained by GEFF) img size 384x192
+cal-ccvid_backbone_path: ./checkpoints/CAL/ltcc-checkpoint.pth.tar  
+cal-ccvid_config_path: ./WBModules/CAL/configs/res50_cels_cal.yaml
+
+# for MEVID (trained by MEVID) img size 256x128
+cal-mevid_backbone_path: ./checkpoints/CAL/CAL_best_model.pth.tar
+cal-mevid_config_path: ./WBModules/CAL/configs/c2dres50_ce_cal.yaml
+
+# for LTCC (trained by GEFF) img size
+cal-ltcc_backbone_path: ./checkpoints/CAL/ltcc-checkpoint.pth.tar
+cal-ltcc_config_path: ./WBModules/CAL/configs/res50_cels_cal.yaml
+
+
+#AIM
+# for LTCC (trained by GEFF) img size 384x192
+aim_backbone_path: ./checkpoints/AIM/ltcc-checkpoint.pth.tar
+aim_config_path: ./WBModules/AIM_CCReID/configs/res50_cels_cal.yaml
+
+
+# AGRL
+agrl_backbone_path: ./checkpoints/AGRL/AGRL_best_model.pth.tar
+
+qe_ckpt_path: checkpoints/QME/fgb_mod_qe-adaface_t1r20-mevid-6000.pth

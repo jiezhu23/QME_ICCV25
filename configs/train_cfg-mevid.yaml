@@ -1,0 +1,21 @@
+seed: 42
+lr_rate: 0.0001
+weight_decay: 0.01
+train_batch: 8
+num_sample: 1
+# Loss hyperparameters
+# margin: 0.2
+triplet_margin: 1
+
+# Model hyperparameters
+num_experts: 2
+mlp_ratio: 3
+out_dim: 1
+
+# Other hyperparameters
+norm_method: "none"
+proj_dim: 512
+head_dim: 1536
+dropout_rate: 0.1
+drop_path: 0.
+tmax: 10
