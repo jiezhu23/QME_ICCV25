@@ -1,6 +1,7 @@
 # IDE settings
 .idea/
 .vscode/
+*.code-workspace
 
 # Python cache
 __pycache__/
