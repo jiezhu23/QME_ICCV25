@@ -68,6 +68,80 @@ The `test_feats/` directory contains pre-computed score matrices for each datase
   - `g_pids`: Gallery labels for the score matrix.
   - ... 
 
+### 3. Download Pre-trained Models
+
+You can download the pre-trained models from the following link:
+
+- **[[Google Drive]](https://drive.google.com/drive/folders/1TBt4HrJlm-Y-IO5SA7IAamZlWvj1vHQU?usp=sharing)**
+
+The pre-trained models should be stored in the `./checkpoints/` directory. e.g., `checkpoints/CAL/...`; `checkpoints/BigGait/...`; `checkpoints/AIM/...`.
+
+For `BigGait`, place `pretrained_LVMs` and `torchhub` folder in `./WBModules/BigGait/`. e.g., `./WBModules/BigGait/pretrained_LVMs/dinov2_vitl14_pretrain.pth`.
+
+For `AdaFace`, we download the pre-trained model via HuggingFace. Change the cache path `adaface_cache_path` in `./configs/backbone_cfg-{dataset}.yaml` to your own path (absolute path) and `HF_TOKEN`. Please refer to `build_face_backbone()` in `model.py` for more details.
+
+### 4. Precompute Center Features for Training Set
+
+To precompute the center features, e.g., for `CAL` on `CCVID` dataset, run the following command:
+
+```bash
+python precompute_center.py --mode cal-ccvid --dataset ccvid --backbone_cfg ./configs/backbone_cfg-ccvid.yaml
+```
+
+Model mode is defined in `./configs/backbone_cfg-{dataset}.yaml`. By default, the center features are saved in the `./mod_center_feat/` directory. It will generate 
+1. `./mod_center_feat/cal-ccvid_center_n100_ccvid_CC.h5`: `100` frames features (by default) for each video, stored with video key.
+2. `./mod_center_feat/cal-ccvid_center_ccvid_CC.h5`: center features for each video aggregated by `100` frames, stored with video key.
+
+
+### 5. Precompute Score Matrices for Test Set
+
+We provide pre-computed score matrices for all datasets reported in the paper in the previous link: `test_feats/scoremats_{dataset}.h5`. To extract by yourself, e.g., score matrices for `CCVID` dataset, run the following command:
+
+```bash
+# for test query features
+python test.py --mode cal-ccvid --dataset ccvid --eval feat
+python test.py --mode adface --dataset ccvid --eval feat
+python test.py --mode biggait --dataset ccvid --eval feat
+
+# Gather score matrices for CCVID
+python test.py --mode adaface,biggait,cal-ccvid --dataset ccvid --eval gather
+```
+
+The result maybe slightly different from the paper.
+
+### 6. Training QME
+
+#### 6.1 Training Quality Estimater
+
+For example, for `LTCC` dataset, run the following command:
+```bash
+python main.py \
+  --mode mod_qe \
+  --dataset ltcc \
+  --backbone_cfg ./configs/backbone_cfg-ltcc.yaml \
+  --train_cfg ./configs/train_cfg-ltcc.yaml \
+  --rank_threshold 3 \
+  --epoch 5 \
+  --max_step 6000 \
+  --test_per_step 3000
+```
+
+#### 6.2 Training QME
+
+You can start from using the provided quality estimator checkpoint in the link. For example, for `LTCC` dataset, run the following command:
+```bash
+python main.py \
+  --mode score_loss \
+  --dataset ltcc \
+  --backbone_cfg ./configs/backbone_cfg-ltcc.yaml \
+  --train_cfg ./configs/train_cfg-ltcc.yaml \
+  --test_per_step 20
+```
+
+More details can be found in the `main.py` file.
+
+
+
 ## 📊 Evaluation
 
 We provide evaluation code and usage examples in the `demo.ipynb` Jupyter notebook. Please follow the instructions in the notebook to run the evaluation on the provided datasets and models.
@@ -88,4 +162,5 @@ If you find this project useful for your research, please consider citing our pa
 ## 📜 License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
 

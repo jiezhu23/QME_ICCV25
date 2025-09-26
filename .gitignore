@@ -17,6 +17,8 @@ __pycache__/
 *.pth
 *.ckpt
 *.checkpoint
+*.tar
+
 
 # Build artifacts
 build/
@@ -25,3 +27,7 @@ dist/
 
 # Other
 .DS_Store
+
+# Checkpoints folder
+checkpoints/**
+!checkpoints/**/

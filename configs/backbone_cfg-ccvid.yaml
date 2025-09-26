@@ -17,7 +17,7 @@ arcface_cache_path: /YOUR_PATH/checkpoints/arcface
 # BigGait
 # DINOv2-s
 biggait_backbone_path: ./checkpoints/BigGait/BigGait__Dinov2_Gaitbase_Frame30-40000.pt
-biggait_cfg_path: ./WBModules/msu_big_gait/configs/BigGait.yaml
+biggait_cfg_path: ./WBModules/BigGait/configs/BigGait.yaml
 
 #CAL
 # for CCVID & LTCC(trained by GEFF) img size 384x192
@@ -42,5 +42,5 @@ aim_config_path: ./WBModules/AIM_CCReID/configs/res50_cels_cal.yaml
 # AGRL
 agrl_backbone_path: ./checkpoints/AGRL/AGRL_best_model.pth.tar
 
-# qe_ckpt_path: checkpoints/QME/fgb_mod_qe-adaface-t1r3-0.00-3.pth # CCVID
-qe_ckpt_path: checkpoints/QME/fgb_mod_qe-cal_t1r3-ccvid-6000.pth # CCVID
+qe_ckpt_path: checkpoints/QME/fgb_mod_qe-adaface-t1r3-0.00-3.pth # CCVID
+# qe_ckpt_path: checkpoints/QME/fgb_mod_qe-cal_t1r3-ccvid-6000.pth # CCVID

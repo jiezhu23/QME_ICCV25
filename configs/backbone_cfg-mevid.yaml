@@ -17,7 +17,7 @@ arcface_cache_path: /YOUR_PATH/checkpoints/arcface
 # BigGait
 # DINOv2-s
 biggait_backbone_path: ./checkpoints/BigGait/BigGait__Dinov2_Gaitbase_Frame30-40000.pt
-biggait_cfg_path: ./WBModules/msu_big_gait/configs/BigGait.yaml
+biggait_cfg_path: ./WBModules/BigGait/configs/BigGait.yaml
 
 #CAL
 # for CCVID & LTCC(trained by GEFF) img size 384x192

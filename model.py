@@ -11,7 +11,7 @@ import torch.nn.functional as F
 from torch.nn import ParameterDict
 from itertools import combinations
 
-# from WBModules import * 
+from WBModules import * 
 from tools.eval_metrics import *
 
 
@@ -55,11 +55,6 @@ def build_face_backbone(backbone_cfg, mode='kprpe'):
         second_hook_block = model.model.net.blocks[16] if hasattr(model.model, 'net') else model.model.model.net.blocks[16]
         first_hook_block.register_forward_hook(hook_fn)
         second_hook_block.register_forward_hook(hook_fn)
-    elif 'insightface' in mode:
-        from insightface.app import FaceAnalysis
-        model = FaceAnalysis()
-        print(f'face backbone model using {mode} model')
-        return model
     elif 'kprpe' in mode:
         model = load_model_by_repo_id(repo_id="minchul/cvlface_adaface_vit_base_kprpe_webface4m", 
                                         save_path=backbone_cfg['kprpe_cache_path'], 
@@ -88,15 +83,6 @@ def build_gait_backbone(backbone_cfg, mode='biggait'):
         model_cfg_path = backbone_cfg['biggait_cfg_path']
         model_cfg = yaml.safe_load(open(model_cfg_path, 'r'))['model_cfg']
         model = GaitModel(model_cfg=model_cfg)
-        checkpoint = torch.load(ckpt_path, map_location='cpu')
-        model.load_state_dict(checkpoint['model'])
-        model.eval()
-        model.mode = mode
-    elif 'openset' in mode:
-        ckpt_path = backbone_cfg['openset_backbone_path']
-        model_cfg_path = backbone_cfg['openset_cfg_path']
-        model_cfg = config_loader(model_cfg_path)
-        model = Baseline(model_cfg['model_cfg'])
         checkpoint = torch.load(ckpt_path, map_location='cpu')
         model.load_state_dict(checkpoint['model'])
         model.eval()
@@ -198,9 +184,9 @@ class QME(nn.Module):
         self.backbone_dict = nn.ModuleDict()
         self.face_model = nn.ModuleDict()
         for model_name in self.model_list:
-            if 'kprpe' in model_name or 'adaface' in model_name or 'arcface' in model_name or 'insightface' in model_name:
+            if 'kprpe' in model_name or 'adaface' in model_name or 'arcface' in model_name:
                 self.face_model[model_name] = build_face_backbone(backbone_cfg, mode=model_name)
-            elif 'biggait' in model_name or 'openset' in model_name:
+            elif 'biggait' in model_name:
                 self.backbone_dict[model_name] = build_gait_backbone(backbone_cfg, mode=model_name)
             elif 'cal' in model_name or 'agrl' in model_name or 'aim' in model_name:
                 self.backbone_dict[model_name] = build_body_backbone(backbone_cfg, mode=model_name)
@@ -212,17 +198,17 @@ class QME(nn.Module):
                 param.requires_grad = False
         
         if 'score' in self.mode:
-            print(f'farsight model using {self.mode} model')
+            print(f'QME model using {self.mode} model')
             # self.fgb = MoNormQE(model_list=self.model_list, num_experts=num_experts, mlp_ratio=mlp_ratio, out_dim=out_dim, qe_ckpt_path=backbone_cfg['qe_ckpt_path'],
                             #   f_patch_dim=512, g_patch_dim=384, b_patch_dim=1024, dropout_rate=dropout_rate, cotrain_qe=cotrain_qe)
             self.fgb = MoNormQE_dev(model_list=self.model_list, num_experts=num_experts, mlp_ratio=mlp_ratio, out_dim=out_dim, qe_ckpt_path=backbone_cfg['qe_ckpt_path'],
                                     dropout_rate=dropout_rate, cotrain_qe=cotrain_qe, use_qe=use_qe, qe_mode=qe_mode)
         elif 'mod_qe' in self.mode:
-            print(f'farsight model using {self.mode} model')
+            print(f'QME model using {self.mode} model')
             self.fgb = Face_Quality_Estimator(patch_dim=512, dropout_rate=dropout_rate)
             # self.fgb = Quality_Estimator(patch_dim=[512, 1024], dropout_rate=dropout_rate)
         else:
-            print(f'farsight model uses original model')
+            print(f'QME model uses original model')
         
         print('backbone model list:', self.model_list)
         print(f'model config: num_experts:{num_experts}, mlp_ratio:{mlp_ratio}, out_dim:{out_dim}, dropout_rate:{dropout_rate}, use_qe:{use_qe}')
@@ -243,11 +229,11 @@ class QME(nn.Module):
         
     def load_ckpt(self, ckpt_path, optimizer=None, scheduler=None):
         if self.mode == 'original':
-            print(f'farsight model uses original model, no need to load ckpt')
+            print(f'QME model uses original model, no need to load ckpt')
         else:
             checkpoint = torch.load(ckpt_path, map_location='cpu')
             self.fgb.load_state_dict(checkpoint['model_state_dict'])
-            print(f'farsight model resumes from ckpt {ckpt_path}')
+            print(f'QME model resumes from ckpt {ckpt_path}')
             if optimizer:
                 optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             if scheduler:
@@ -324,11 +310,6 @@ class QME(nn.Module):
                     # gait = einops.rearrange(gait, '(bs n) c p -> bs n (c p)', bs=bs, n=n)  # (B, N, 4096)
             # take middle 2 blocks
             intermediate_feats = intermediate_feats[:, :, 1:3]
-        elif 'openset' in mode:
-            bs, n = gait.shape[0:2]
-            gait = self.backbone_dict[mode](([gait], [0], ['_'], ['_'], None))['inference_feat']['embeddings'] # (bs, c=512, p=16)
-            gait = gait.flatten(1)  # (B, 8192)
-            intermediate_feats = None
         torch.cuda.empty_cache()
         return gait, intermediate_feats
 
@@ -381,34 +362,6 @@ class QME(nn.Module):
                     
             intermediate_feats = []
 
-
-        elif 'evl' in mode:
-            with torch.no_grad():
-                outs = []
-                padding = 8 - body.shape[1] % 8
-                for _ in range(padding):
-                    # random select a frame to pad
-                    idx = random.randint(0, body.shape[1] - 1)
-                    body = torch.cat([body, body[:, idx:idx+1, ...]], dim=1)
-                batches = int((body.shape[1] / 4) - 1)
-                for idx in range(batches):
-                    input_ = einops.rearrange(body[:, (idx)*4:((idx*4)+8), ...], 'b n c h w -> b c n h w')
-                    body_identity = self.backbone_dict[mode](input_) # (b, 2048)
-                    outs.append(body_identity)
-                body = torch.stack(outs, dim=1) # (b, n+padding//4, 2048)
-                # body = einops.rearrange(body, 'b n c h w -> b c n h w') # (B, 3, N, 224, 224), N should be divisible by 8
-                # body = self.backbone_dict[mode](body) # (B, d=2048)
-                intermediate_feats = []
-                for idx_block in self.backbone_dict[mode].idx_block:
-                    intermediate_feats.append(
-                        self.backbone_dict[mode].backbone[0].blocks[idx_block].hook_output[:, 1:, :]) # remove the [CLS] token
-                # here follow the Biggait to do the normalization
-                intermediate_feats = partial(nn.LayerNorm, eps=1e-6)(intermediate_feats[0].shape[-1],
-                                                                    elementwise_affine=False)(
-                    torch.stack(intermediate_feats, dim=0))
-                intermediate_feats = einops.rearrange(intermediate_feats, 'blk (bs n) p c -> bs n blk p c',
-                                                        bs=bs).contiguous().float()
-                # intermediate_feats = None
         torch.cuda.empty_cache()
         return body, intermediate_feats
     
@@ -421,7 +374,7 @@ class QME(nn.Module):
                 face_feat, face_intermediate, template_score = self.get_face_feat(inputs[model_name], aggregated=aggregated, mode=model_name)
                 feats_list[model_name] = face_feat
                 interm_feats_list[model_name] = face_intermediate
-            elif 'biggait' in model_name or 'openset' in model_name:
+            elif 'biggait' in model_name:
                 gait_feat, gait_intermediate = self.get_gait_feat(inputs[model_name], aggregated=aggregated, mode=model_name)
                 feats_list[model_name] = gait_feat
                 interm_feats_list[model_name] = gait_intermediate
@@ -482,9 +435,9 @@ class QME(nn.Module):
                 if 'kprpe' in model_name or 'adaface' in model_name or 'arcface' in model_name:
                     face_interm_feats = interm_feats_list[model_name]
                     res = self.fgb(face_interm=face_interm_feats)
-                elif 'cal' in model_name:
-                    res = self.fgb(interm_feat=interm_feats_list[model_name])
-                    res = {'body_weights': res, 'body_scores': scores_list[model_name]}
+                # elif 'cal' in model_name:
+                #     res = self.fgb(interm_feat=interm_feats_list[model_name])
+                #     res = {'body_weights': res, 'body_scores': scores_list[model_name]}
             feats_list.update(res)
         for model_name in self.model_list:
             if 'kprpe' in model_name or 'adaface' in model_name or 'arcface' in model_name:
@@ -494,21 +447,7 @@ class QME(nn.Module):
             # if 'cal' in model_name or 'agrl' in model_name:
             #     feats_list['body_scores'] = feats_list[model_name]
         return feats_list
-
-    def update_combinations_tracker(self, fused_score, q_pids, q_camids, q_clothes_ids, g_pids, g_camids, g_clothes_ids):
-        fused_score = fused_score.cpu().numpy()
-        q_pids = q_pids.cpu().numpy()
-        q_camids = q_camids.cpu().numpy()
-        q_clothes_ids = q_clothes_ids.cpu().numpy()
-        g_pids = g_pids.cpu().numpy()
-        g_camids = g_camids.cpu().numpy()
-        g_clothes_ids = g_clothes_ids.cpu().numpy()
-        tar = compute_tar_at_far(fused_score, q_pids, g_pids)[r'TAR@1.00%FAR']
-        cmc, mAP = evaluate(fused_score, q_pids, g_pids, q_camids, g_camids)
-        cc_cmc, cc_mAP = evaluate_with_clothes(fused_score, q_pids, g_pids, q_camids, g_camids, q_clothes_ids, g_clothes_ids, mode='CC')
-
-        return tar, cmc[0], mAP, cc_cmc[0], cc_mAP     
-    
+ 
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
             trunc_normal_(m.weight, std=.02)
@@ -553,19 +492,6 @@ class MoNormQE(nn.Module):
             
             for param in self.qe.parameters():
                 param.requires_grad = False  
-        
-        # Initialize model_statics as a ParameterDict
-        # self.model_statics = ParameterDict({
-        #     model_name: nn.ParameterDict({
-        #         'min': nn.Parameter(torch.tensor(float('inf')), requires_grad=False),
-        #         'max': nn.Parameter(torch.tensor(float('-inf')), requires_grad=False),
-        #         'mean': nn.Parameter(torch.tensor(0.0), requires_grad=False),
-        #         'std': nn.Parameter(torch.tensor(0.0), requires_grad=False),
-        #         'count': nn.Parameter(torch.tensor(0), requires_grad=False),
-        #         'match_mean': nn.Parameter(torch.tensor(0.0), requires_grad=False),
-        #         'match_std': nn.Parameter(torch.tensor(0.0), requires_grad=False)
-        #     }) for model_name in model_list
-        # })
 
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
@@ -575,41 +501,6 @@ class MoNormQE(nn.Module):
         elif isinstance(m, nn.LayerNorm):
             nn.init.constant_(m.bias, 0)
             nn.init.constant_(m.weight, 1.0)
-    
-    def _update_model_statics(self, scores, labels):
-        for model_name, score in scores.items():
-            # Update count
-            count = self.model_statics[model_name]['count'] + score.size(0)
-            self.model_statics[model_name]['count'].data.copy_(torch.tensor(count))  # Update count parameter
-            
-            # Update min and max
-            current_min = self.model_statics[model_name]['min'].item()
-            current_max = self.model_statics[model_name]['max'].item()
-            self.model_statics[model_name]['min'].data.copy_(torch.tensor(min(current_min, score.min().item())))
-            self.model_statics[model_name]['max'].data.copy_(torch.tensor(max(current_max, score.max().item())))
-            
-            # Update mean
-            current_mean = self.model_statics[model_name]['mean'].item()
-            new_mean = current_mean + (score.mean().item() - current_mean) / count
-            self.model_statics[model_name]['mean'].data.copy_(torch.tensor(new_mean))
-            
-            # Update std
-            # Using Welford's method for numerical stability
-            M2 = self.model_statics[model_name].get('M2', nn.Parameter(torch.tensor(0.0, requires_grad=False)))  # Register M2 as a parameter
-            delta = score.mean().item() - current_mean
-            M2.data.copy_(M2.data + delta * (score.mean().item() - new_mean))  # Update M2
-            self.model_statics[model_name]['M2'] = M2  # Store updated M2
-
-            # Update match_mean and match_std
-            mask = labels.unsqueeze(1) == torch.arange(score.size(1), device=labels.device)  # Create a boolean mask
-            match_scores = score[mask]
-            match_mean = match_scores.mean().item()
-            match_std = match_scores.std().item()
-            self.model_statics[model_name]['match_mean'].data.copy_(torch.tensor(match_mean))
-            self.model_statics[model_name]['match_std'].data.copy_(torch.tensor(match_std))
-            
-            if count > 1:
-                self.model_statics[model_name]['std'].data.copy_(torch.tensor((M2 / (count - 1)) ** 0.5))
 
     def cal_rankx(self, scores, labels):
             # scores: (B, N), labels: (B,)
@@ -629,8 +520,6 @@ class MoNormQE(nn.Module):
         """
         device = next(self.parameters()).device
         result = {}
-        # get min, max, mean, std for each modal
-        # self._update_model_statics(scores_list, labels)
         # get face quality weights
         with torch.no_grad():
             # weights = self.qe(face_interm, gait_interm, body_interm)
@@ -733,8 +622,6 @@ class MoNormQE_dev(nn.Module):
         """
         device = next(self.parameters()).device
         result = {}
-        # get min, max, mean, std for each modal
-        # self._update_model_statics(scores_list, labels)
         # get face quality weights
         if self.use_qe:
             with torch.no_grad():                
@@ -743,11 +630,11 @@ class MoNormQE_dev(nn.Module):
                 # weights = {'face_weights': 1 - 1 / weights}
                 
                 # (OPTIONAL) use CAL QE
-                weights = self.qe([interm_feats_list[k] for k in interm_feats_list.keys() if 'cal' in k][0])
-                weights = {'face_weights': weights}
+                # weights = self.qe([interm_feats_list[k] for k in interm_feats_list.keys() if 'cal' in k][0])
+                # weights = {'face_weights': weights}
                 
                 # use face quality estimator 
-                # weights = self.qe([interm_feats_list[k] for k in interm_feats_list.keys() if MODEL_MAPPING_DICT[k]=='face_data'][0])
+                weights = self.qe([interm_feats_list[k] for k in interm_feats_list.keys() if MODEL_MAPPING_DICT[k]=='face_data'][0])
         else:
             weights = {'face_weights': torch.tensor(self.weights, device=device).reshape(1, 1)}
         result.update(weights)
@@ -1205,7 +1092,7 @@ def sim_fn(probe_feats, gallery_feats, model_name, norm_method='none'):
         # simiarity function for different models (e.g., cos_sim/euc_dist)
         if 'kprpe' in model_name or 'adaface' in model_name or 'arcface' in model_name or 'cal' in model_name or 'agrl' in model_name or 'aim' in model_name:
             scores = F.cosine_similarity(probe_feats.unsqueeze(1), gallery_feats.unsqueeze(0), dim=2)
-        elif 'biggait' in model_name or 'openset' in model_name:
+        elif 'biggait' in model_name:
             bs = probe_feats.shape[0]
             num_g = gallery_feats.shape[0]
             # euc distance
@@ -1217,19 +1104,6 @@ def sim_fn(probe_feats, gallery_feats, model_name, norm_method='none'):
         if norm_method == 'none':
             scores = scores
         return scores
-
-def generate_combinations(N):
-    elements = list(range(N))  # Create list [0, 1, 2, ..., N-1]
-    all_combinations = []
-    
-    for r in range(1, N + 1):
-        # Generate all combinations of size r
-        all_combinations.extend(list(combinations(elements, r)))
-    
-    # Convert the tuple combinations to list
-    all_combinations = [list(c) for c in all_combinations]
-    
-    return all_combinations
 
 def compare_model_weights(model1, model2):
     # Get the state dictionaries of the two models
