@@ -7,15 +7,10 @@
 </div>
 
 ## 🗞️ News  
+- Training code, checkpoints and scripts have been released.
 - Preprocessed datasets and evaluation protocol have been released.
 - The paper is available on [arXiv](https://arxiv.org/abs/2508.00053).
 - Our paper has been accepted to **ICCV 2025**! 🎉
-
-## 📋 TODO List
-- [ ] Release training code and scripts.
-- [X] Release preprocessed datasets.
-- [X] Release evaluation code and model checkpoints.
-- [X] Prepare camera-ready and arXiv version.
 
 ## 📂 Project Structure
 ```
@@ -113,7 +108,7 @@ The result maybe slightly different from the paper.
 
 #### 6.1 Training Quality Estimater
 
-For example, for `LTCC` dataset, run the following command:
+By default, we train quality estimator for face. For example, for `LTCC` dataset, run the following command:
 ```bash
 python main.py \
   --mode mod_qe \
@@ -125,6 +120,7 @@ python main.py \
   --max_step 6000 \
   --test_per_step 3000
 ```
+If you want to train quality estimator for body, please check the commented code in `model.py`.
 
 #### 6.2 Training QME
 
