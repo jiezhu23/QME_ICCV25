@@ -94,12 +94,12 @@ We provide pre-computed score matrices for all datasets reported in the paper in
 
 ```bash
 # for test query features
-python test.py --mode cal-ccvid --dataset ccvid --eval feat
-python test.py --mode adface --dataset ccvid --eval feat
-python test.py --mode biggait --dataset ccvid --eval feat
+python test.py --mode cal-ccvid --dataset ccvid --eval_mode feat
+python test.py --mode adface --dataset ccvid --eval_mode feat
+python test.py --mode biggait --dataset ccvid --eval_mode feat
 
 # Gather score matrices for CCVID
-python test.py --mode adaface,biggait,cal-ccvid --dataset ccvid --eval gather
+python test.py --mode adaface,biggait,cal-ccvid --dataset ccvid --eval_mode gather
 ```
 
 The result maybe slightly different from the paper.
